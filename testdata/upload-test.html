@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Upload Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .progress {
+            width: 100%;
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #007bff;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <h1>Video Upload Test</h1>
+    <p>Use this form to test the video upload API</p>
+    
+    <form id="uploadForm">
+        <div class="form-group">
+            <label for="userId">User ID:</label>
+            <input type="text" id="userId" name="userId" value="user123" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="title">Video Title:</label>
+            <input type="text" id="title" name="title" placeholder="Enter video title" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="video">Video File:</label>
+            <input type="file" id="video" name="video" accept="video/*" required>
+        </div>
+        
+        <button type="submit" id="uploadBtn">Upload Video</button>
+    </form>
+    
+    <div class="progress" id="progressContainer" style="display: none;">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+    
+    <div id="result"></div>
+
+    <script>
+        const uploadForm = document.getElementById('uploadForm');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const resultDiv = document.getElementById('result');
+
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('userId', document.getElementById('userId').value);
+            formData.append('title', document.getElementById('title').value);
+            formData.append('video', document.getElementById('video').files[0]);
+            
+            // Show progress bar
+            progressContainer.style.display = 'block';
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Uploading...';
+            resultDiv.innerHTML = '';
+            
+            try {
+                const xhr = new XMLHttpRequest();
+                
+                // Track upload progress
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const percentComplete = (e.loaded / e.total) * 100;
+                        progressBar.style.width = percentComplete + '%';
+                    }
+                });
+                
+                // Handle response
+                xhr.addEventListener('load', () => {
+                    const response = JSON.parse(xhr.responseText);
+                    displayResult(response, xhr.status === 200);
+                });
+                
+                xhr.addEventListener('error', () => {
+                    displayResult({ success: false, message: 'Network error occurred' }, false);
+                });
+                
+                // Send request
+                xhr.open('POST', 'http://localhost:8081/api/v1/upload');
+                xhr.send(formData);
+                
+            } catch (error) {
+                displayResult({ success: false, message: error.message }, false);
+            }
+        });
+        
+        function displayResult(response, isSuccess) {
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = 'Upload Video';
+            progressContainer.style.display = 'none';
+            progressBar.style.width = '0%';
+            
+            const resultClass = response.success ? 'success' : 'error';
+            let resultHtml = `<div class="result ${resultClass}">
+                <strong>${response.success ? 'Success!' : 'Error!'}</strong><br>
+                ${response.message}`;
+            
+            if (response.success && response.s3_key) {
+                resultHtml += `<br><br>
+                    <strong>S3 Key:</strong> ${response.s3_key}<br>
+                    <strong>File Size:</strong> ${(response.file_size / 1024 / 1024).toFixed(2)} MB`;
+                if (response.s3_url) {
+                    resultHtml += `<br><strong>S3 URL:</strong> <a href="${response.s3_url}" target="_blank">${response.s3_url}</a>`;
+                }
+            }
+            
+            resultHtml += '</div>';
+            resultDiv.innerHTML = resultHtml;
+        }
+        
+        // Load upload info on page load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch('http://localhost:8081/api/v1/upload/info');
+                const info = await response.json();
+                console.log('Upload Info:', info);
+            } catch (error) {
+                console.log('Could not fetch upload info:', error.message);
+            }
+        });
+    </script>
+</body>
+</html>
