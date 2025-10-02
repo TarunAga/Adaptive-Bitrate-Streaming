@@ -44,11 +44,11 @@ func (h *Handler) UploadVideoHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get form values
-	userID := r.FormValue("userId")
+	userName := r.FormValue("userName")
 	title := r.FormValue("title")
 
-	if userID == "" {
-		respondWithError(w, http.StatusBadRequest, "userId is required")
+	if userName == "" {
+		respondWithError(w, http.StatusBadRequest, "userName is required")
 		return
 	}
 
@@ -80,10 +80,10 @@ func (h *Handler) UploadVideoHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Create upload request
 	uploadReq := &UploadRequest{
-		UserID: userID,
-		Title:  title,
-		File:   file,
-		Header: fileHeader,
+		UserName: userName,
+		Title:    title,
+		File:     file,
+		Header:   fileHeader,
 	}
 
 	// Upload to S3
@@ -123,7 +123,7 @@ func (h *Handler) GetUploadInfoHandler(w http.ResponseWriter, r *http.Request) {
 		"max_file_size_mb": 500,
 		"allowed_formats":  []string{"mp4", "avi", "mov", "mkv", "webm"},
 		"bucket_name":      BucketName,
-		"required_fields":  []string{"userId", "title", "video"},
+		"required_fields":  []string{"userName", "title", "video"},
 	}
 	
 	w.Header().Set("Content-Type", "application/json")

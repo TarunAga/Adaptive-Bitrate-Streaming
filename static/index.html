@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎬 Adaptive Streaming Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            text-align: center;
+            padding: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .tab-btn {
+            flex: 1;
+            padding: 20px;
+            background: none;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            color: #6c757d;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .tab-btn.active {
+            color: #007bff;
+            background: white;
+        }
+        
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #007bff;
+        }
+        
+        .tab-btn:hover {
+            background: #e9ecef;
+        }
+        
+        .tab-content {
+            padding: 40px;
+        }
+        
+        .tab-panel {
+            display: none;
+        }
+        
+        .tab-panel.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,123,255,0.3);
+        }
+        
+        .btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-weight: 500;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .user-status {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .user-info {
+            font-weight: 600;
+            color: #1565c0;
+        }
+        
+        .logout-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .logout-btn:hover {
+            background: #c82333;
+        }
+        
+        .upload-area {
+            border: 3px dashed #dee2e6;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-area:hover {
+            border-color: #007bff;
+            background: #f8f9ff;
+        }
+        
+        .upload-area.dragover {
+            border-color: #007bff;
+            background: #e3f2fd;
+        }
+        
+        .progress-container {
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #e9ecef;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #007bff, #0056b3);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .progress-text {
+            text-align: center;
+            margin-top: 10px;
+            font-weight: 600;
+            color: #007bff;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .feature-card {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .feature-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+        
+        .feature-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .feature-desc {
+            color: #6c757d;
+            line-height: 1.5;
+        }
+        
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .tab-content {
+                padding: 20px;
+            }
+            
+            .nav-tabs {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🎬 Adaptive Bitrate Streaming</h1>
+            <p>Test your authentication and video upload functionality</p>
+        </div>
+
+        <!-- User Status (shown when logged in) -->
+        <div id="userStatus" class="user-status hidden">
+            <div class="user-info" id="userInfo"></div>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="showTab('register')">📝 Register</button>
+            <button class="tab-btn" onclick="showTab('login')">🔐 Login</button>
+            <button class="tab-btn" onclick="showTab('upload')">📹 Upload</button>
+            <button class="tab-btn" onclick="showTab('about')">ℹ️ About</button>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- Register Tab -->
+            <div id="register" class="tab-panel active">
+                <h2>Create New Account</h2>
+                <form id="registerForm">
+                    <div class="form-group">
+                        <label for="regUsername">Username</label>
+                        <input type="text" id="regUsername" class="form-control" required 
+                               placeholder="Enter your username">
+                    </div>
+                    <div class="form-group">
+                        <label for="regEmail">Email Address</label>
+                        <input type="email" id="regEmail" class="form-control" required 
+                               placeholder="Enter your email">
+                    </div>
+                    <div class="form-group">
+                        <label for="regPassword">Password</label>
+                        <input type="password" id="regPassword" class="form-control" required 
+                               placeholder="Enter your password">
+                    </div>
+                    <div class="form-group">
+                        <label for="regFirstName">First Name</label>
+                        <input type="text" id="regFirstName" class="form-control" 
+                               placeholder="Enter your first name">
+                    </div>
+                    <div class="form-group">
+                        <label for="regLastName">Last Name</label>
+                        <input type="text" id="regLastName" class="form-control" 
+                               placeholder="Enter your last name">
+                    </div>
+                    <button type="submit" class="btn">Create Account</button>
+                </form>
+                <div id="registerMessage"></div>
+            </div>
+
+            <!-- Login Tab -->
+            <div id="login" class="tab-panel">
+                <h2>Welcome Back</h2>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="loginEmail">Email Address</label>
+                        <input type="email" id="loginEmail" class="form-control" required 
+                               placeholder="Enter your email">
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">Password</label>
+                        <input type="password" id="loginPassword" class="form-control" required 
+                               placeholder="Enter your password">
+                    </div>
+                    <button type="submit" class="btn">Sign In</button>
+                </form>
+                <div id="loginMessage"></div>
+            </div>
+
+            <!-- Upload Tab -->
+            <div id="upload" class="tab-panel">
+                <h2>Upload Video</h2>
+                
+                <div id="uploadNotAuth" class="alert alert-error">
+                    <strong>Authentication Required</strong><br>
+                    Please login first to upload videos.
+                </div>
+
+                <div id="uploadAuth" class="hidden">
+                    <form id="uploadForm">
+                        <div class="form-group">
+                            <label for="videoTitle">Video Title</label>
+                            <input type="text" id="videoTitle" class="form-control" required 
+                                   placeholder="Enter video title">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Video File</label>
+                            <div class="upload-area" id="uploadArea">
+                                <div>
+                                    <p style="font-size: 3em; margin-bottom: 10px;">📹</p>
+                                    <p><strong>Drop your video file here</strong></p>
+                                    <p>or click to browse</p>
+                                    <input type="file" id="videoFile" accept="video/*" required 
+                                           style="display: none;">
+                                </div>
+                            </div>
+                            <div id="selectedFile" class="hidden">
+                                <p><strong>Selected:</strong> <span id="fileName"></span></p>
+                                <p><strong>Size:</strong> <span id="fileSize"></span></p>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn" id="uploadBtn">Upload Video</button>
+                    </form>
+                    
+                    <div class="progress-container" id="progressContainer">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <div class="progress-text" id="progressText">0%</div>
+                    </div>
+                    
+                    <div id="uploadMessage"></div>
+                </div>
+            </div>
+
+            <!-- About Tab -->
+            <div id="about" class="tab-panel">
+                <h2>About This Application</h2>
+                <p>This is a test interface for the Adaptive Bitrate Streaming backend service.</p>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">🔐</div>
+                        <div class="feature-title">Authentication</div>
+                        <div class="feature-desc">JWT-based user authentication with registration and login</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📹</div>
+                        <div class="feature-title">Video Upload</div>
+                        <div class="feature-desc">Secure video upload with AWS S3 integration</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🚀</div>
+                        <div class="feature-title">Real-time Progress</div>
+                        <div class="feature-desc">Live upload progress tracking and status updates</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🛡️</div>
+                        <div class="feature-title">Secure</div>
+                        <div class="feature-desc">Protected routes with middleware authentication</div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 30px;">
+                    <h3>API Endpoints:</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        <li>🔹 <code>POST /api/v1/auth/register</code></li>
+                        <li>🔹 <code>POST /api/v1/auth/login</code></li>
+                        <li>🔹 <code>POST /api/v1/upload</code> (protected)</li>
+                        <li>🔹 <code>GET /api/v1/health</code></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let currentUser = null;
+        let authToken = null;
+        const API_BASE = 'http://localhost:8081/api/v1';
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUserData();
+            setupEventListeners();
+            updateAuthState();
+        });
+
+        // Load user data from localStorage
+        function loadUserData() {
+            authToken = localStorage.getItem('authToken');
+            const userData = localStorage.getItem('userData');
+            if (authToken && userData) {
+                currentUser = JSON.parse(userData);
+            }
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Forms
+            document.getElementById('registerForm').addEventListener('submit', handleRegister);
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            document.getElementById('uploadForm').addEventListener('submit', handleUpload);
+
+            // File upload area
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('videoFile');
+
+            uploadArea.addEventListener('click', () => fileInput.click());
+            uploadArea.addEventListener('dragover', handleDragOver);
+            uploadArea.addEventListener('drop', handleFileDrop);
+            fileInput.addEventListener('change', handleFileSelect);
+        }
+
+        // Tab switching
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-panel').forEach(panel => {
+                panel.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+
+            updateAuthState();
+        }
+
+        // Update authentication state
+        function updateAuthState() {
+            const userStatus = document.getElementById('userStatus');
+            const userInfo = document.getElementById('userInfo');
+            const uploadNotAuth = document.getElementById('uploadNotAuth');
+            const uploadAuth = document.getElementById('uploadAuth');
+
+            if (currentUser && authToken) {
+                userStatus.classList.remove('hidden');
+                userInfo.textContent = `👋 Welcome, ${currentUser.user_name} (${currentUser.email})`;
+                uploadNotAuth.classList.add('hidden');
+                uploadAuth.classList.remove('hidden');
+            } else {
+                userStatus.classList.add('hidden');
+                uploadNotAuth.classList.remove('hidden');
+                uploadAuth.classList.add('hidden');
+            }
+        }
+
+        // Handle registration
+        async function handleRegister(e) {
+            e.preventDefault();
+            const messageDiv = document.getElementById('registerMessage');
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+
+            const formData = {
+                username: document.getElementById('regUsername').value,
+                email: document.getElementById('regEmail').value,
+                password: document.getElementById('regPassword').value,
+                first_name: document.getElementById('regFirstName').value,
+                last_name: document.getElementById('regLastName').value
+            };
+
+            try {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Creating Account...';
+
+                const response = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    messageDiv.innerHTML = `<div class="alert alert-success">${result.message}</div>`;
+                    
+                    // Auto-login after registration
+                    if (result.token) {
+                        authToken = result.token;
+                        currentUser = result.user;
+                        localStorage.setItem('authToken', authToken);
+                        localStorage.setItem('userData', JSON.stringify(currentUser));
+                        updateAuthState();
+                        showTab('upload');
+                    }
+                    
+                    document.getElementById('registerForm').reset();
+                } else {
+                    messageDiv.innerHTML = `<div class="alert alert-error">${result.message}</div>`;
+                }
+            } catch (error) {
+                messageDiv.innerHTML = `<div class="alert alert-error">Network error: ${error.message}</div>`;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Account';
+            }
+        }
+
+        // Handle login
+        async function handleLogin(e) {
+            e.preventDefault();
+            const messageDiv = document.getElementById('loginMessage');
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+
+            const formData = {
+                email: document.getElementById('loginEmail').value,
+                password: document.getElementById('loginPassword').value
+            };
+
+            try {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Signing In...';
+
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    messageDiv.innerHTML = `<div class="alert alert-success">${result.message}</div>`;
+                    
+                    authToken = result.token;
+                    currentUser = result.user;
+                    localStorage.setItem('authToken', authToken);
+                    localStorage.setItem('userData', JSON.stringify(currentUser));
+                    updateAuthState();
+                    showTab('upload');
+                    document.getElementById('loginForm').reset();
+                } else {
+                    messageDiv.innerHTML = `<div class="alert alert-error">${result.message}</div>`;
+                }
+            } catch (error) {
+                messageDiv.innerHTML = `<div class="alert alert-error">Network error: ${error.message}</div>`;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Sign In';
+            }
+        }
+
+        // Handle file drag over
+        function handleDragOver(e) {
+            e.preventDefault();
+            document.getElementById('uploadArea').classList.add('dragover');
+        }
+
+        // Handle file drop
+        function handleFileDrop(e) {
+            e.preventDefault();
+            document.getElementById('uploadArea').classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                document.getElementById('videoFile').files = files;
+                displaySelectedFile(files[0]);
+            }
+        }
+
+        // Handle file select
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                displaySelectedFile(file);
+            }
+        }
+
+        // Display selected file info
+        function displaySelectedFile(file) {
+            const selectedFile = document.getElementById('selectedFile');
+            const fileName = document.getElementById('fileName');
+            const fileSize = document.getElementById('fileSize');
+
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            selectedFile.classList.remove('hidden');
+        }
+
+        // Format file size
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Handle video upload
+        async function handleUpload(e) {
+            e.preventDefault();
+            
+            if (!authToken) {
+                showMessage('uploadMessage', 'Please login first!', 'error');
+                return;
+            }
+
+            const messageDiv = document.getElementById('uploadMessage');
+            const submitBtn = document.getElementById('uploadBtn');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+
+            const formData = new FormData();
+            formData.append('title', document.getElementById('videoTitle').value);
+            formData.append('video', document.getElementById('videoFile').files[0]);
+            formData.append('userName', currentUser.user_name);
+
+            try {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Uploading...';
+                progressContainer.style.display = 'block';
+                messageDiv.innerHTML = '';
+
+                // Simulate progress (replace with real progress tracking if available)
+                let progress = 0;
+                const progressInterval = setInterval(() => {
+                    progress += Math.random() * 15;
+                    if (progress > 90) progress = 90;
+                    progressFill.style.width = progress + '%';
+                    progressText.textContent = Math.round(progress) + '%';
+                }, 200);
+
+                const response = await fetch(`${API_BASE}/upload`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` },
+                    body: formData
+                });
+
+                clearInterval(progressInterval);
+                progressFill.style.width = '100%';
+                progressText.textContent = '100%';
+
+                const result = await response.json();
+
+                if (result.success) {
+                    messageDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <strong>✅ ${result.message}</strong><br>
+                            <strong>Video ID:</strong> ${result.video_id}<br>
+                            <strong>File Size:</strong> ${formatFileSize(result.file_size)}<br>
+                            <strong>S3 URL:</strong> <a href="${result.s3_url}" target="_blank">View File</a>
+                        </div>`;
+                    document.getElementById('uploadForm').reset();
+                    document.getElementById('selectedFile').classList.add('hidden');
+                } else {
+                    messageDiv.innerHTML = `<div class="alert alert-error">${result.message}</div>`;
+                }
+
+                setTimeout(() => {
+                    progressContainer.style.display = 'none';
+                }, 2000);
+
+            } catch (error) {
+                messageDiv.innerHTML = `<div class="alert alert-error">Upload failed: ${error.message}</div>`;
+                progressContainer.style.display = 'none';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Upload Video';
+            }
+        }
+
+        // Show message helper
+        function showMessage(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+        }
+
+        // Logout function
+        function logout() {
+            authToken = null;
+            currentUser = null;
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userData');
+            updateAuthState();
+            
+            // Clear all messages
+            document.getElementById('registerMessage').innerHTML = '';
+            document.getElementById('loginMessage').innerHTML = '';
+            document.getElementById('uploadMessage').innerHTML = '';
+            
+            showTab('login');
+        }
+
+        // Test API connection on load
+        fetch(`${API_BASE}/health`)
+            .then(response => response.ok ? 
+                console.log('✅ API Connected') : 
+                console.log('❌ API Connection Failed'))
+            .catch(error => console.log('❌ API Connection Failed:', error.message));
+    </script>
+</body>
+</html>

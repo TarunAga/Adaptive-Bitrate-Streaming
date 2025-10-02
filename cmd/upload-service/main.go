@@ -1,55 +1,81 @@
 package main
 
 import (
-	"log"
-	"net/http"
-	"os"
+    "log"
+    "net/http"
 
-	"github.com/TarunAga/adaptive-bitrate-streaming/pkg/upload"
-	"github.com/gorilla/mux"
+    "github.com/gorilla/mux"
+    "github.com/TarunAga/adaptive-bitrate-streaming/pkg/database"
+    "github.com/TarunAga/adaptive-bitrate-streaming/pkg/upload"
+    "github.com/TarunAga/adaptive-bitrate-streaming/pkg/auth"
+    "github.com/joho/godotenv"
 )
 
 func main() {
-	// Get port from environment variable or use default
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8081"
-	}
+    // Initialize database
+    err := godotenv.Load()
+    if err != nil {
+        log.Println("No .env file found, using system environment variables")
+    }
+    
+    log.Println("Connecting to PostgreSQL database...")
+    dbConfig := database.GetDefaultConfig()
+    err = database.Connect(dbConfig)
+    if err != nil {
+        log.Fatalf("Failed to connect to database: %v", err)
+    }
+    defer database.Close()
 
-	// Initialize upload service
-	uploadService, err := upload.NewService()
-	if err != nil {
-		log.Fatalf("Failed to initialize upload service: %v", err)
-	}
+    // Run migrations
+    log.Println("Running database migrations...")
+    err = database.AutoMigrate()
+    if err != nil {
+        log.Fatalf("Failed to run migrations: %v", err)
+    }
 
-	// Initialize handler
-	uploadHandler := upload.NewHandler(uploadService)
+    // Create services
+    uploadService, err := upload.NewService(database.GetDB())
+    if err != nil {
+        log.Fatalf("Failed to create upload service: %v", err)
+    }
 
-	// Setup routes
-	router := mux.NewRouter()
-	
-	// API routes
-	api := router.PathPrefix("/api/v1").Subrouter()
-	api.HandleFunc("/upload", uploadHandler.UploadVideoHandler).Methods("POST", "OPTIONS")
-	api.HandleFunc("/upload/info", uploadHandler.GetUploadInfoHandler).Methods("GET")
-	api.HandleFunc("/health", uploadHandler.HealthCheckHandler).Methods("GET")
+    // Create handlers
+    uploadHandler := upload.NewHandler(uploadService)
+    authHandler := auth.NewAuthHandler(database.GetDB())
 
-	// Add logging middleware
-	router.Use(loggingMiddleware)
+    // Setup routes
+    router := mux.NewRouter()
+    
+    // Auth routes (no authentication required)
+    router.HandleFunc("/api/v1/auth/register", authHandler.RegisterHandler).Methods("POST", "OPTIONS")
+    router.HandleFunc("/api/v1/auth/login", authHandler.LoginHandler).Methods("POST", "OPTIONS")
+    
+    // Protected upload routes (authentication required)
+    router.HandleFunc("/api/v1/upload", authHandler.AuthMiddleware(uploadHandler.UploadVideoHandler)).Methods("POST", "OPTIONS")
 
-	log.Printf("Starting upload service on port %s", port)
-	log.Printf("Upload endpoint: http://localhost:%s/api/v1/upload", port)
-	log.Printf("Health check: http://localhost:%s/api/v1/health", port)
-	log.Printf("Upload info: http://localhost:%s/api/v1/upload/info", port)
-	
-	// Start server
-	log.Fatal(http.ListenAndServe(":"+port, router))
-}
+    // Public info routes
+    router.HandleFunc("/api/v1/upload/info", uploadHandler.GetUploadInfoHandler).Methods("GET")
+    router.HandleFunc("/api/v1/health", uploadHandler.HealthCheckHandler).Methods("GET")
 
-// loggingMiddleware logs HTTP requests
-func loggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("%s %s %s", r.Method, r.RequestURI, r.RemoteAddr)
-		next.ServeHTTP(w, r)
-	})
+    // ✅ FIXED: Serve static files (choose ONE folder)
+    router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
+    
+    // ✅ Root redirect to our test page
+    router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+        http.Redirect(w, r, "/static/index.html", http.StatusMovedPermanently)
+    }).Methods("GET")
+
+    log.Printf("Upload service starting on :8081")
+    log.Printf("Database: PostgreSQL connected successfully")
+    log.Printf("Routes registered:")
+    log.Printf("  POST /api/v1/auth/register")
+    log.Printf("  POST /api/v1/auth/login")
+    log.Printf("  POST /api/v1/upload (protected)")
+    log.Printf("  GET  /api/v1/upload/info")
+    log.Printf("  GET  /api/v1/health")
+    log.Printf("  GET  /static/ (static files)")
+    log.Printf("  GET  / (redirects to /static/index.html)")
+    log.Printf("Server listening on http://localhost:8081")
+
+    log.Fatal(http.ListenAndServe(":8081", router))
 }
