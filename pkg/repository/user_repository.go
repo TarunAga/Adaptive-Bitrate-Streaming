@@ -3,6 +3,7 @@ package repository
 import (
     "github.com/TarunAga/adaptive-bitrate-streaming/pkg/entities"
     "gorm.io/gorm"
+	"github.com/google/uuid"
 )
 
 type UserRepository struct {
@@ -47,13 +48,11 @@ func (r *UserRepository) GetUserByUserName(userName string) (*entities.User, err
 }
 
 // GetUserByID finds user by ID
-func (r *UserRepository) GetUserByID(userID uint) (*entities.User, error) {
+func (r *UserRepository) GetUserByID(userID uuid.UUID) (*entities.User, error) {
     var user entities.User
-    result := r.db.First(&user, userID)
-    
-    if result.Error != nil {
-        return nil, result.Error
+    err := r.db.Where("user_id = ?", userID).First(&user).Error
+    if err != nil {
+        return nil, err
     }
-    
     return &user, nil
 }

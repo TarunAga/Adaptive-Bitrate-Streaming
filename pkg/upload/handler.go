@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"github.com/google/uuid"
 )
 
 // Handler handles HTTP requests for video uploads
@@ -35,20 +36,28 @@ func (h *Handler) UploadVideoHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userIDStr := r.Header.Get("X-User-ID")
+	if userIDStr == "" {
+		respondWithError(w, http.StatusBadRequest, "X-User-ID header is required")
+		return
+	}
+	userId, err := uuid.Parse(userIDStr)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid X-User-ID header")
+		return
+	}
+
 	// Parse multipart form (32MB max memory)
-	err := r.ParseMultipartForm(32 << 20)
+	err = r.ParseMultipartForm(32 << 20)
 	if err != nil {
 		log.Printf("Failed to parse multipart form: %v", err)
 		respondWithError(w, http.StatusBadRequest, "Failed to parse multipart form")
 		return
 	}
-
-	// Get form values
-	userName := r.FormValue("userName")
 	title := r.FormValue("title")
 
-	if userName == "" {
-		respondWithError(w, http.StatusBadRequest, "userName is required")
+	if userId == uuid.Nil {
+		respondWithError(w, http.StatusBadRequest, "userId is required")
 		return
 	}
 
@@ -79,12 +88,12 @@ func (h *Handler) UploadVideoHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create upload request
-	uploadReq := &UploadRequest{
-		UserName: userName,
-		Title:    title,
-		File:     file,
-		Header:   fileHeader,
-	}
+    uploadReq := &UploadRequest{
+        UserId: userId,
+        Title:  title,
+        File:   file,
+        Header: fileHeader,
+    }
 
 	// Upload to S3
 	response, err := h.service.UploadVideo(uploadReq)

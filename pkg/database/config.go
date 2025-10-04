@@ -80,37 +80,35 @@ func AutoMigrate() error {
 
     // Step 1: Drop existing tables if they exist (to start fresh)
     log.Println("Checking for existing tables...")
-    if DB.Migrator().HasTable(&entities.Video{}) {
-        log.Println("Dropping existing videos table...")
-        if err := DB.Migrator().DropTable(&entities.Video{}); err != nil {
-            log.Printf("Warning: Could not drop videos table: %v", err)
+    if !DB.Migrator().HasTable(&entities.User{}) {
+        log.Println("Creating users table...")
+        err := DB.Migrator().CreateTable(&entities.User{})
+        if err != nil {
+            return fmt.Errorf("failed to create users table: %w", err)
         }
+        log.Println("✅ Users table created successfully")
+    } else {
+        log.Println("✅ Users table already exists")
     }
     
-    if DB.Migrator().HasTable(&entities.User{}) {
-        log.Println("Dropping existing users table...")
-        if err := DB.Migrator().DropTable(&entities.User{}); err != nil {
-            log.Printf("Warning: Could not drop users table: %v", err)
+    if !DB.Migrator().HasTable(&entities.Video{}) {
+        log.Println("Creating videos table...")
+        err := DB.Migrator().CreateTable(&entities.Video{})
+        if err != nil {
+            return fmt.Errorf("failed to create videos table: %w", err)
         }
+        log.Println("✅ Videos table created successfully")
+    } else {
+        log.Println("✅ Videos table already exists")
     }
-
-    // Step 2: Create Users table first (no foreign keys)
-    log.Println("Creating users table...")
-    err := DB.Migrator().CreateTable(&entities.User{})
+    
+    log.Println("Running safe schema updates...")
+    err := DB.AutoMigrate(&entities.User{}, &entities.Video{})
     if err != nil {
-        return fmt.Errorf("failed to create users table: %w", err)
+        return fmt.Errorf("failed to run auto migrations: %w", err)
     }
-    log.Println("✅ Users table created successfully")
+    log.Println("✅ Schema updates completed")
 
-    // Step 3: Create Videos table (this will now work because users table exists)
-    log.Println("Creating videos table...")
-    err = DB.Migrator().CreateTable(&entities.Video{})
-    if err != nil {
-        return fmt.Errorf("failed to create videos table: %w", err)
-    }
-    log.Println("✅ Videos table created successfully")
-
-    // Step 4: Create foreign key constraints manually if needed
     log.Println("Creating foreign key constraints...")
     err = createForeignKeys()
     if err != nil {

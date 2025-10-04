@@ -699,7 +699,6 @@
             const formData = new FormData();
             formData.append('title', document.getElementById('videoTitle').value);
             formData.append('video', document.getElementById('videoFile').files[0]);
-            formData.append('userName', currentUser.user_name);
 
             try {
                 submitBtn.disabled = true;

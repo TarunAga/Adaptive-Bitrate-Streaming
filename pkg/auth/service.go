@@ -5,7 +5,7 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
-
+	"github.com/google/uuid"
 	"github.com/TarunAga/adaptive-bitrate-streaming/pkg/entities"
 	"github.com/TarunAga/adaptive-bitrate-streaming/pkg/repository"
 )
@@ -21,7 +21,7 @@ type LoginRequest struct {
 }
 
 type RegisterRequest struct {
-	UserName string `json:"user_name"`
+	UserName string `json:"username"`
 	Password string `json:"password"`
 	Email	string `json:"email"`
 	FirstName string `json:"first_name"`
@@ -37,7 +37,7 @@ type AuthResponse struct {
 
 type Claims  struct {
 	jwt.RegisteredClaims
-	UserID   uint   `json:"user_id"`
+    UserID   uuid.UUID `json:"user_id"`   
 	UserName string `json:"user_name"`
 	Email    string `json:"email"`
 }

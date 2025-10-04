@@ -5,7 +5,6 @@ import (
     "net/http"
     "strings"
     "log"
-
     "gorm.io/gorm"
 )
 
@@ -42,6 +41,7 @@ func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
+	log.Printf("Register request: %+v", req)
 	if req.UserName == "" || req.Password == "" || req.Email == "" {
 		respondWithError(w, http.StatusBadRequest, "userName, password and email are required")
 		return
@@ -79,8 +79,8 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.UserName == "" || req.Password == "" {
-		respondWithError(w, http.StatusBadRequest, "userName and password are required")
+	if req.Password == "" || req.Email == "" {
+		respondWithError(w, http.StatusBadRequest, "password and email are required")
 		return
 	}
 
@@ -137,9 +137,9 @@ func (h *Handler) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		// Add user info to request context
-        r.Header.Set("X-User-ID", string(rune(claims.UserID)))
+        r.Header.Set("X-User-ID", claims.UserID.String())   
         r.Header.Set("X-User-Name", claims.UserName)
-        r.Header.Set("X-User-Email", claims.Email) // NEW: Added email
+        r.Header.Set("X-User-Email", claims.Email)
 
         next(w,r)
 	})
