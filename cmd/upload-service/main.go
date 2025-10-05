@@ -5,9 +5,11 @@ import (
     "net/http"
 
     "github.com/gorilla/mux"
+    "github.com/rs/cors"
     "github.com/TarunAga/adaptive-bitrate-streaming/pkg/database"
     "github.com/TarunAga/adaptive-bitrate-streaming/pkg/upload"
     "github.com/TarunAga/adaptive-bitrate-streaming/pkg/auth"
+    "github.com/TarunAga/adaptive-bitrate-streaming/pkg/streaming" // ✅ ADD: Import streaming package
     "github.com/joho/godotenv"
 )
 
@@ -39,9 +41,16 @@ func main() {
         log.Fatalf("Failed to create upload service: %v", err)
     }
 
+    // ✅ ADD: Create streaming service
+    streamingService, err := streaming.NewService(database.GetDB())
+    if err != nil {
+        log.Fatalf("Failed to create streaming service: %v", err)
+    }
+
     // Create handlers
     uploadHandler := upload.NewHandler(uploadService)
     authHandler := auth.NewAuthHandler(database.GetDB())
+    streamingHandler := streaming.NewHandler(streamingService) // ✅ ADD: Create streaming handler
 
     // Setup routes
     router := mux.NewRouter()
@@ -52,30 +61,36 @@ func main() {
     
     // Protected upload routes (authentication required)
     router.HandleFunc("/api/v1/upload", authHandler.AuthMiddleware(uploadHandler.UploadVideoHandler)).Methods("POST", "OPTIONS")
+    router.HandleFunc("/api/v1/videos", authHandler.AuthMiddleware(uploadHandler.GetUserVideosHandler)).Methods("GET", "OPTIONS")
+
+    // ✅ ADD: Protected streaming routes (authentication required)
+    router.HandleFunc("/api/v1/video/{videoId}/stream", authHandler.AuthMiddleware(streamingHandler.GetVideoStreamHandler)).Methods("GET", "OPTIONS")
 
     // Public info routes
     router.HandleFunc("/api/v1/upload/info", uploadHandler.GetUploadInfoHandler).Methods("GET")
     router.HandleFunc("/api/v1/health", uploadHandler.HealthCheckHandler).Methods("GET")
 
-    // ✅ FIXED: Serve static files (choose ONE folder)
-    router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
-    
-    // ✅ Root redirect to our test page
-    router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-        http.Redirect(w, r, "/static/index.html", http.StatusMovedPermanently)
-    }).Methods("GET")
+    // Setup basic CORS for API
+    c := cors.New(cors.Options{
+        AllowedOrigins: []string{"*"},
+        AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+        AllowedHeaders: []string{"*"},
+        AllowCredentials: true,
+    })
 
-    log.Printf("Upload service starting on :8081")
-    log.Printf("Database: PostgreSQL connected successfully")
-    log.Printf("Routes registered:")
+    handler := c.Handler(router)
+
+    log.Printf("🚀 Adaptive Bitrate Streaming API starting...")
+    log.Printf("📊 Database: PostgreSQL connected successfully")
+    log.Printf("📡 API Routes:")
     log.Printf("  POST /api/v1/auth/register")
     log.Printf("  POST /api/v1/auth/login")
     log.Printf("  POST /api/v1/upload (protected)")
+    log.Printf("  GET  /api/v1/videos (protected)")
+    log.Printf("  GET  /api/v1/video/{videoId}/stream (protected)") // ✅ ADD: Log new streaming route
     log.Printf("  GET  /api/v1/upload/info")
     log.Printf("  GET  /api/v1/health")
-    log.Printf("  GET  /static/ (static files)")
-    log.Printf("  GET  / (redirects to /static/index.html)")
-    log.Printf("Server listening on http://localhost:8081")
+    log.Printf("✅ API Server ready at http://localhost:8081")
 
-    log.Fatal(http.ListenAndServe(":8081", router))
+    log.Fatal(http.ListenAndServe(":8081", handler))
 }

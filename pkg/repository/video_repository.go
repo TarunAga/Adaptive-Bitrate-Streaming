@@ -36,9 +36,9 @@ func (r *VideoRepository) GetVideoByVideoID(videoID uuid.UUID) (*entities.Video,
 }
 
 // GetVideosByUserID gets all videos for a user
-func (r *VideoRepository) GetVideosByUserID(userID uuid.UUID) ([]entities.Video, error) {
-    var videos []entities.Video
-    result := r.db.Where("user_id = ?", userID).Find(&videos)
+func (r *VideoRepository) GetVideosByUserID(userID uuid.UUID) ([]*entities.Video, error) {
+    var videos []*entities.Video
+    result := r.db.Where("user_id = ?", userID).Order("created_at DESC").Find(&videos)
     
     if result.Error != nil {
         return nil, result.Error

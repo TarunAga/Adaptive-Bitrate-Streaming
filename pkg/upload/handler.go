@@ -140,6 +140,55 @@ func (h *Handler) GetUploadInfoHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(info)
 }
 
+// GetUserVideosHandler returns all videos for the authenticated user
+func (h *Handler) GetUserVideosHandler(w http.ResponseWriter, r *http.Request) {
+	// Set CORS headers
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userIDStr := r.Header.Get("X-User-ID")
+	if userIDStr == "" {
+		respondWithError(w, http.StatusBadRequest, "X-User-ID header is required")
+		return
+	}
+	
+	userId, err := uuid.Parse(userIDStr)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid X-User-ID header")
+		return
+	}
+
+	// Get user videos from service
+	videos, err := h.service.GetUserVideos(userId)
+	if err != nil {
+		log.Printf("Failed to get user videos: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to get videos")
+		return
+	}
+
+	response := map[string]interface{}{
+		"success": true,
+		"message": "Videos retrieved successfully",
+		"videos":  videos,
+		"count":   len(videos),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
 // isVideoFile checks if the uploaded file is a video file
 func isVideoFile(contentType, filename string) bool {
 	// Check content type

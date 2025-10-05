@@ -259,3 +259,24 @@ processingService := processing.NewProcessingService(
     log.Printf("Video processing completed for %s: %d qualities generated", 
         videoID.String(), len(result.Qualities))
 }
+
+// GetUserVideos retrieves all videos for a specific user
+func (s *Service) GetUserVideos(userID uuid.UUID) ([]*entities.Video, error) {
+    // Get user by ID to ensure they exist
+    user, err := s.userRepo.GetUserByID(userID)
+    if err != nil {
+        return nil, fmt.Errorf("failed to get user: %w", err)
+    }
+    
+    if user == nil {
+        return nil, fmt.Errorf("user not found")
+    }
+    
+    // Get all videos for the user
+    videos, err := s.videoRepo.GetVideosByUserID(userID)
+    if err != nil {
+        return nil, fmt.Errorf("failed to get user videos: %w", err)
+    }
+    
+    return videos, nil
+}
