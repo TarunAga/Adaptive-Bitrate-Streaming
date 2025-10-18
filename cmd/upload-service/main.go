@@ -1,55 +1,96 @@
 package main
 
 import (
-	"log"
-	"net/http"
-	"os"
+    "log"
+    "net/http"
 
-	"github.com/TarunAga/adaptive-bitrate-streaming/pkg/upload"
-	"github.com/gorilla/mux"
+    "github.com/gorilla/mux"
+    "github.com/rs/cors"
+    "github.com/TarunAga/adaptive-bitrate-streaming/pkg/database"
+    "github.com/TarunAga/adaptive-bitrate-streaming/pkg/upload"
+    "github.com/TarunAga/adaptive-bitrate-streaming/pkg/auth"
+    "github.com/TarunAga/adaptive-bitrate-streaming/pkg/streaming" // ✅ ADD: Import streaming package
+    "github.com/joho/godotenv"
 )
 
 func main() {
-	// Get port from environment variable or use default
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8081"
-	}
+    // Initialize database
+    err := godotenv.Load()
+    if err != nil {
+        log.Println("No .env file found, using system environment variables")
+    }
+    
+    log.Println("Connecting to PostgreSQL database...")
+    dbConfig := database.GetDefaultConfig()
+    err = database.Connect(dbConfig)
+    if err != nil {
+        log.Fatalf("Failed to connect to database: %v", err)
+    }
+    defer database.Close()
 
-	// Initialize upload service
-	uploadService, err := upload.NewService()
-	if err != nil {
-		log.Fatalf("Failed to initialize upload service: %v", err)
-	}
+    // Run migrations
+    log.Println("Running database migrations...")
+    err = database.AutoMigrate()
+    if err != nil {
+        log.Fatalf("Failed to run migrations: %v", err)
+    }
 
-	// Initialize handler
-	uploadHandler := upload.NewHandler(uploadService)
+    // Create services
+    uploadService, err := upload.NewService(database.GetDB())
+    if err != nil {
+        log.Fatalf("Failed to create upload service: %v", err)
+    }
 
-	// Setup routes
-	router := mux.NewRouter()
-	
-	// API routes
-	api := router.PathPrefix("/api/v1").Subrouter()
-	api.HandleFunc("/upload", uploadHandler.UploadVideoHandler).Methods("POST", "OPTIONS")
-	api.HandleFunc("/upload/info", uploadHandler.GetUploadInfoHandler).Methods("GET")
-	api.HandleFunc("/health", uploadHandler.HealthCheckHandler).Methods("GET")
+    // ✅ ADD: Create streaming service
+    streamingService, err := streaming.NewService(database.GetDB())
+    if err != nil {
+        log.Fatalf("Failed to create streaming service: %v", err)
+    }
 
-	// Add logging middleware
-	router.Use(loggingMiddleware)
+    // Create handlers
+    uploadHandler := upload.NewHandler(uploadService)
+    authHandler := auth.NewAuthHandler(database.GetDB())
+    streamingHandler := streaming.NewHandler(streamingService) // ✅ ADD: Create streaming handler
 
-	log.Printf("Starting upload service on port %s", port)
-	log.Printf("Upload endpoint: http://localhost:%s/api/v1/upload", port)
-	log.Printf("Health check: http://localhost:%s/api/v1/health", port)
-	log.Printf("Upload info: http://localhost:%s/api/v1/upload/info", port)
-	
-	// Start server
-	log.Fatal(http.ListenAndServe(":"+port, router))
-}
+    // Setup routes
+    router := mux.NewRouter()
+    
+    // Auth routes (no authentication required)
+    router.HandleFunc("/api/v1/auth/register", authHandler.RegisterHandler).Methods("POST", "OPTIONS")
+    router.HandleFunc("/api/v1/auth/login", authHandler.LoginHandler).Methods("POST", "OPTIONS")
+    
+    // Protected upload routes (authentication required)
+    router.HandleFunc("/api/v1/upload", authHandler.AuthMiddleware(uploadHandler.UploadVideoHandler)).Methods("POST", "OPTIONS")
+    router.HandleFunc("/api/v1/videos", authHandler.AuthMiddleware(uploadHandler.GetUserVideosHandler)).Methods("GET", "OPTIONS")
 
-// loggingMiddleware logs HTTP requests
-func loggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("%s %s %s", r.Method, r.RequestURI, r.RemoteAddr)
-		next.ServeHTTP(w, r)
-	})
+    // ✅ ADD: Protected streaming routes (authentication required)
+    router.HandleFunc("/api/v1/video/{videoId}/stream", authHandler.AuthMiddleware(streamingHandler.GetVideoStreamHandler)).Methods("GET", "OPTIONS")
+
+    // Public info routes
+    router.HandleFunc("/api/v1/upload/info", uploadHandler.GetUploadInfoHandler).Methods("GET")
+    router.HandleFunc("/api/v1/health", uploadHandler.HealthCheckHandler).Methods("GET")
+
+    // Setup basic CORS for API
+    c := cors.New(cors.Options{
+        AllowedOrigins: []string{"*"},
+        AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+        AllowedHeaders: []string{"*"},
+        AllowCredentials: true,
+    })
+
+    handler := c.Handler(router)
+
+    log.Printf("🚀 Adaptive Bitrate Streaming API starting...")
+    log.Printf("📊 Database: PostgreSQL connected successfully")
+    log.Printf("📡 API Routes:")
+    log.Printf("  POST /api/v1/auth/register")
+    log.Printf("  POST /api/v1/auth/login")
+    log.Printf("  POST /api/v1/upload (protected)")
+    log.Printf("  GET  /api/v1/videos (protected)")
+    log.Printf("  GET  /api/v1/video/{videoId}/stream (protected)") // ✅ ADD: Log new streaming route
+    log.Printf("  GET  /api/v1/upload/info")
+    log.Printf("  GET  /api/v1/health")
+    log.Printf("✅ API Server ready at http://localhost:8081")
+
+    log.Fatal(http.ListenAndServe(":8081", handler))
 }
